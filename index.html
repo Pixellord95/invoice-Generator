@@ -514,6 +514,37 @@ const blockDefs=[
 let blockState={}, blockVisible={};
 blockDefs.forEach(b=>{blockState[b.id]={x:b.x,y:b.y,w:b.w,h:b.h};blockVisible[b.id]=true;});
 
+// Sub-sektioner per block
+const subDefs={
+  topbar:   [{id:'logo',    label:'Logotyp'},
+             {id:'heading', label:'Rubrik + fakturanr'}],
+  inforow:  [{id:'company', label:'Företagsinfo'},
+             {id:'customer',label:'Kundinformation'},
+             {id:'sumbox',  label:'Summarybox (att betala)'}],
+  metastrip:[{id:'invno',   label:'Fakturanr'},
+             {id:'date',    label:'Fakturadatum'},
+             {id:'due',     label:'Förfallodatum'},
+             {id:'terms',   label:'Betalningsvillkor'},
+             {id:'currency',label:'Valuta'},
+             {id:'ocr',     label:'OCR-nummer'},
+             {id:'erref',   label:'Er referens'},
+             {id:'varref',  label:'Vår referens'},
+             {id:'custno',  label:'Kundnummer'}],
+  items:    [{id:'note',    label:'Noteringskolumn'},
+             {id:'disc',    label:'Rabattkolumn'},
+             {id:'vat',     label:'Momskolumn'}],
+  totals:   [{id:'net',     label:'Nettorad'},
+             {id:'disc',    label:'Rabattrad'},
+             {id:'vat',     label:'Momsrader'},
+             {id:'ores',    label:'Öresutjämning'},
+             {id:'rcnote',  label:'RC-anmärkning'}],
+  footer:   [{id:'addr',    label:'Adresskolumn'},
+             {id:'contact', label:'Kontaktkolumn'},
+             {id:'payment', label:'Betalningskolumn'}],
+};
+let subVisible={};
+Object.keys(subDefs).forEach(bid=>{subVisible[bid]={};subDefs[bid].forEach(s=>{subVisible[bid][s.id]=true;});});
+
 // ── TABS ──
 const tabNames=['data','design','blocks'];
 function switchTab(t) {
@@ -526,13 +557,58 @@ function switchTab(t) {
 function buildBlockToggles() {
   const c=g('block-toggles'); c.innerHTML='';
   blockDefs.forEach(b=>{
-    const row=document.createElement('div');
-    row.style.cssText='display:flex;align-items:center;gap:10px;margin-bottom:8px;padding:7px 10px;background:var(--g50);border:1px solid var(--g100);border-radius:var(--r8)';
+    const subs=subDefs[b.id]||[];
+    const wrap=document.createElement('div');
+    wrap.style.cssText='margin-bottom:6px;border:1px solid var(--g100);border-radius:var(--r8);overflow:hidden';
+
+    const header=document.createElement('div');
+    header.style.cssText='display:flex;align-items:center;gap:8px;padding:7px 10px;background:var(--g50)';
+
     const cb=document.createElement('input'); cb.type='checkbox'; cb.checked=blockVisible[b.id];
     cb.style.cssText='width:14px;height:14px;accent-color:var(--b500);cursor:pointer;flex-shrink:0';
     cb.onchange=()=>{blockVisible[b.id]=cb.checked;pushHistory();onChange();};
-    const lbl=document.createElement('label'); lbl.style.cssText='font-size:11px;cursor:pointer;color:var(--g700);font-weight:500'; lbl.textContent=b.label;
-    row.appendChild(cb); row.appendChild(lbl); c.appendChild(row);
+
+    const lbl=document.createElement('span');
+    lbl.style.cssText='font-size:11px;color:var(--g700);font-weight:500;flex:1';
+    lbl.textContent=b.label;
+
+    header.appendChild(cb); header.appendChild(lbl);
+
+    if(subs.length){
+      const chevron=document.createElement('span');
+      chevron.style.cssText='font-size:11px;color:var(--g400);cursor:pointer;padding:0 3px;transition:transform .15s;display:inline-block;user-select:none';
+      chevron.textContent='›'; chevron.title='Visa delsektioner';
+
+      const subPanel=document.createElement('div');
+      subPanel.style.cssText='display:none;padding:6px 10px 8px 32px;background:#fff;border-top:1px solid var(--g100)';
+
+      subs.forEach(s=>{
+        const subRow=document.createElement('div');
+        subRow.style.cssText='display:flex;align-items:center;gap:8px;padding:3px 0';
+
+        const scb=document.createElement('input'); scb.type='checkbox';
+        scb.checked=(subVisible[b.id]||{})[s.id]!==false;
+        scb.style.cssText='width:12px;height:12px;accent-color:var(--b500);cursor:pointer;flex-shrink:0';
+        scb.onchange=()=>{if(!subVisible[b.id])subVisible[b.id]={};subVisible[b.id][s.id]=scb.checked;pushHistory();onChange();};
+
+        const slbl=document.createElement('span');
+        slbl.style.cssText='font-size:11px;color:var(--g600)';
+        slbl.textContent=s.label;
+
+        subRow.appendChild(scb); subRow.appendChild(slbl); subPanel.appendChild(subRow);
+      });
+
+      chevron.onclick=()=>{
+        const open=subPanel.style.display==='block';
+        subPanel.style.display=open?'none':'block';
+        chevron.style.transform=open?'':'rotate(90deg)';
+      };
+      header.appendChild(chevron);
+      wrap.appendChild(header); wrap.appendChild(subPanel);
+    } else {
+      wrap.appendChild(header);
+    }
+    c.appendChild(wrap);
   });
 }
 
@@ -592,7 +668,8 @@ const DEFAULT_LAYOUT = {
   font:'Arial,Helvetica,sans-serif', fs:11, ts:22,
   pageW:794, pageH:1123,
   blockState:  Object.fromEntries(blockDefs.map(b=>[b.id,{x:b.x,y:b.y,w:b.w,h:b.h}])),
-  blockVisible:Object.fromEntries(blockDefs.map(b=>[b.id,true]))
+  blockVisible:Object.fromEntries(blockDefs.map(b=>[b.id,true])),
+  subVisible:  Object.fromEntries(Object.keys(subDefs).map(bid=>[bid,Object.fromEntries(subDefs[bid].map(s=>[s.id,true]))]))
 };
 
 // Läser layoutinställningar från formulär + state → rent objekt
@@ -603,7 +680,8 @@ function getLayoutConfig() {
     font:g('d-font').value, fs:+g('d-fontsize').value||11, ts:+g('d-titlesize').value||22,
     pageW:+g('d-width').value||794, pageH:+g('d-height').value||1123,
     blockState:JSON.parse(JSON.stringify(blockState)),
-    blockVisible:JSON.parse(JSON.stringify(blockVisible))
+    blockVisible:JSON.parse(JSON.stringify(blockVisible)),
+    subVisible:JSON.parse(JSON.stringify(subVisible))
   };
 }
 
@@ -622,6 +700,7 @@ function applyLayoutConfig(L) {
   if(L.pageH)   g('d-height').value=L.pageH;
   if(L.blockState)   blockState=JSON.parse(JSON.stringify(L.blockState));
   if(L.blockVisible) blockVisible=JSON.parse(JSON.stringify(L.blockVisible));
+  if(L.subVisible)   subVisible=JSON.parse(JSON.stringify(L.subVisible));
   resizeCanvas(); buildBlockToggles(); renderAll();
 }
 
@@ -646,33 +725,78 @@ function blockHTML(id, inv, L) {
   const addrHtml=inv.addr.replace(/\n/g,'<br>');
   const cAddrHtml=inv.cAddr.replace(/\n/g,'<br>');
   const bs=`font-family:${L.font};font-size:${L.fs}px;color:${L.text};line-height:1.55`;
+  const sv=L.subVisible||{};
 
-  if(id==='topbar') return `<div style="${bs};display:flex;align-items:center;justify-content:space-between;gap:20px;padding-bottom:14px;border-bottom:2px solid ${L.accent}">${inv.logoUrl?`<img src="${inv.logoUrl}" style="max-width:${inv.logoW}px;max-height:${inv.logoH}px;display:block">`:`<div style="width:70px;height:36px;border:1px dashed #ddd;border-radius:3px;display:flex;align-items:center;justify-content:center;font-size:9px;color:#ccc">Logotyp</div>`}<div style="text-align:right"><div style="font-size:${L.ts}px;font-weight:700;color:${L.text};text-transform:uppercase;letter-spacing:.06em">${invTypeLabel(inv.type)}</div><div style="font-size:${L.fs}px;color:#999;margin-top:3px">Nr ${inv.invno}${inv.reminvno?' · Avser nr '+inv.reminvno:''}</div></div></div>`;
+  if(id==='topbar') {
+    const tb=sv.topbar||{}; const showLogo=tb.logo!==false; const showHead=tb.heading!==false;
+    const logo=showLogo?(inv.logoUrl?`<img src="${inv.logoUrl}" style="max-width:${inv.logoW}px;max-height:${inv.logoH}px;display:block">`:`<div style="width:70px;height:36px;border:1px dashed #ddd;border-radius:3px;display:flex;align-items:center;justify-content:center;font-size:9px;color:#ccc">Logotyp</div>`):'';
+    const head=showHead?`<div style="text-align:right"><div style="font-size:${L.ts}px;font-weight:700;color:${L.text};text-transform:uppercase;letter-spacing:.06em">${invTypeLabel(inv.type)}</div><div style="font-size:${L.fs}px;color:#999;margin-top:3px">Nr ${inv.invno}${inv.reminvno?' · Avser nr '+inv.reminvno:''}</div></div>`:'';
+    const jc=showLogo&&showHead?'space-between':showHead?'flex-end':'flex-start';
+    return `<div style="${bs};display:flex;align-items:center;justify-content:${jc};gap:20px;padding-bottom:14px;border-bottom:2px solid ${L.accent}">${logo}${head}</div>`;
+  }
 
-  if(id==='inforow') return `<div style="${bs};display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px;padding:14px 0"><div><div style="font-size:${L.fs+2}px;font-weight:500;color:${L.accent};margin-bottom:4px">${inv.company}</div><div style="font-size:${L.fs-1}px;color:#666;line-height:1.7">${addrHtml}<br>${inv.phone}<br>${inv.email}</div></div><div><div style="font-size:${L.fs-1}px;text-transform:uppercase;letter-spacing:.08em;color:#bbb;margin-bottom:4px">Faktureras till</div><div style="font-weight:600;color:${L.text};text-transform:uppercase;margin-bottom:3px">${inv.cName}</div><div style="font-size:${L.fs-1}px;color:#666;line-height:1.7">${cAddrHtml}</div></div><div style="background:${L.sumbox};border:0.5px solid #d0dff0;border-radius:6px;padding:12px 14px;text-align:right"><div style="font-size:${L.fs-1}px;color:#888;margin-bottom:2px">Att betala</div><div style="font-size:${L.ts-2}px;font-weight:700;color:${L.text};margin-bottom:8px;white-space:nowrap">${fmt(inv.grand)}</div><div style="font-size:${L.fs-1}px;color:#888">Förfaller</div><div style="font-weight:600;font-size:${L.fs}px;color:${L.text}">${fmtDate(inv.due)}</div></div></div>`;
+  if(id==='inforow') {
+    const ib=sv.inforow||{};
+    const cols=[
+      ib.company!==false?`<div><div style="font-size:${L.fs+2}px;font-weight:500;color:${L.accent};margin-bottom:4px">${inv.company}</div><div style="font-size:${L.fs-1}px;color:#666;line-height:1.7">${addrHtml}<br>${inv.phone}<br>${inv.email}</div></div>`:null,
+      ib.customer!==false?`<div><div style="font-size:${L.fs-1}px;text-transform:uppercase;letter-spacing:.08em;color:#bbb;margin-bottom:4px">Faktureras till</div><div style="font-weight:600;color:${L.text};text-transform:uppercase;margin-bottom:3px">${inv.cName}</div><div style="font-size:${L.fs-1}px;color:#666;line-height:1.7">${cAddrHtml}</div></div>`:null,
+      ib.sumbox!==false?`<div style="background:${L.sumbox};border:0.5px solid #d0dff0;border-radius:6px;padding:12px 14px;text-align:right"><div style="font-size:${L.fs-1}px;color:#888;margin-bottom:2px">Att betala</div><div style="font-size:${L.ts-2}px;font-weight:700;color:${L.text};margin-bottom:8px;white-space:nowrap">${fmt(inv.grand)}</div><div style="font-size:${L.fs-1}px;color:#888">Förfaller</div><div style="font-weight:600;font-size:${L.fs}px;color:${L.text}">${fmtDate(inv.due)}</div></div>`:null,
+    ].filter(Boolean);
+    const gtc=Array(cols.length).fill('1fr').join(' ');
+    return `<div style="${bs};display:grid;grid-template-columns:${gtc};gap:16px;padding:14px 0">${cols.join('')}</div>`;
+  }
 
   if(id==='metastrip') {
-    const cells=[['Fakturanr',inv.invno],['Fakturadatum',fmtDate(inv.date)],['Förfallodatum',fmtDate(inv.due)],['Betalningsvillkor',inv.terms],['Valuta',inv.currency],['OCR',inv.ocr],...(inv.erref?[['Er ref.',inv.erref]]:[]),...(inv.varref?[['Vår ref.',inv.varref]]:[]),...(inv.custno?[['Kundnr',inv.custno]]:[])];
-    return `<div style="background:${L.strip};border-radius:5px;padding:10px 14px;display:flex;gap:20px;flex-wrap:wrap;font-family:${L.font}">${cells.map(([k,v])=>`<div><div style="font-size:${L.fs-2}px;text-transform:uppercase;letter-spacing:.07em;color:#aaa;margin-bottom:2px">${k}</div><div style="font-size:${L.fs}px;font-weight:600;color:${L.text}">${v}</div></div>`).join('')}</div>`;
+    const ms=sv.metastrip||{};
+    const allCells=[
+      ['invno',   'Fakturanr',         inv.invno,           true],
+      ['date',    'Fakturadatum',       fmtDate(inv.date),   true],
+      ['due',     'Förfallodatum',      fmtDate(inv.due),    true],
+      ['terms',   'Betalningsvillkor',  inv.terms,           true],
+      ['currency','Valuta',             inv.currency,        true],
+      ['ocr',     'OCR',               inv.ocr,             true],
+      ['erref',   'Er ref.',            inv.erref,           !!inv.erref],
+      ['varref',  'Vår ref.',           inv.varref,          !!inv.varref],
+      ['custno',  'Kundnr',             inv.custno,          !!inv.custno],
+    ];
+    const cells=allCells.filter(([sid,,,hasVal])=>ms[sid]!==false&&hasVal);
+    return `<div style="background:${L.strip};border-radius:5px;padding:10px 14px;display:flex;gap:20px;flex-wrap:wrap;font-family:${L.font}">${cells.map(([,k,v])=>`<div><div style="font-size:${L.fs-2}px;text-transform:uppercase;letter-spacing:.07em;color:#aaa;margin-bottom:2px">${k}</div><div style="font-size:${L.fs}px;font-weight:600;color:${L.text}">${v}</div></div>`).join('')}</div>`;
   }
 
   if(id==='items') {
+    const it=sv.items||{};
+    const showNote=it.note!==false, showDisc=it.disc!==false, showVat=it.vat!==false;
     let rows='', rowNum=1;
-    inv.items.forEach((it,i)=>{
-      const lineNet=(it.price*(1-(it.disc||0)/100))*it.qty;
+    inv.items.forEach((row,i)=>{
+      const lineNet=(row.price*(1-(row.disc||0)/100))*row.qty;
       const bg=i%2===0?'#fff':L.roweven;
-      rows+=`<tr style="background:${bg}"><td style="padding:5px 4px;color:#bbb;font-size:${L.fs-1}px;width:18px">${rowNum++}</td><td style="padding:5px 4px;color:${L.text}">${it.desc||'–'}</td><td style="padding:5px 4px;color:#777;font-size:${L.fs-1}px">${it.note||''}</td><td style="padding:5px 4px;text-align:right;width:38px;color:${L.text}">${it.qty}</td><td style="padding:5px 4px;text-align:right;width:72px;color:${L.text}">${fmt(it.price)}</td>${it.disc?`<td style="padding:5px 4px;text-align:right;color:#dc2626;width:36px">-${it.disc}%</td>`:`<td style="width:36px"></td>`}<td style="padding:5px 4px;text-align:right;width:36px;color:#777">${inv.rc?'RC':it.vat+'%'}</td><td style="padding:5px 4px;text-align:right;width:78px;font-weight:500;color:${L.text}">${fmt(lineNet)}</td></tr>`;
+      const discCell=showDisc?(row.disc?`<td style="padding:5px 4px;text-align:right;color:#dc2626;width:36px">-${row.disc}%</td>`:`<td style="width:36px"></td>`):'';
+      rows+=`<tr style="background:${bg}"><td style="padding:5px 4px;color:#bbb;font-size:${L.fs-1}px;width:18px">${rowNum++}</td><td style="padding:5px 4px;color:${L.text}">${row.desc||'–'}</td>${showNote?`<td style="padding:5px 4px;color:#777;font-size:${L.fs-1}px">${row.note||''}</td>`:''}<td style="padding:5px 4px;text-align:right;width:38px;color:${L.text}">${row.qty}</td><td style="padding:5px 4px;text-align:right;width:72px;color:${L.text}">${fmt(row.price)}</td>${discCell}${showVat?`<td style="padding:5px 4px;text-align:right;width:36px;color:#777">${inv.rc?'RC':row.vat+'%'}</td>`:''}<td style="padding:5px 4px;text-align:right;width:78px;font-weight:500;color:${L.text}">${fmt(lineNet)}</td></tr>`;
     });
-    return `<table style="width:100%;border-collapse:collapse;font-family:${L.font};font-size:${L.fs}px;color:${L.text}"><thead><tr style="border-bottom:1.5px solid ${L.accent}"><th style="padding:5px 4px;text-align:left;color:${L.accent};font-size:${L.fs-1}px;font-weight:600">#</th><th style="padding:5px 4px;text-align:left;color:${L.accent};font-size:${L.fs-1}px;font-weight:600">Produkt / tjänst</th><th style="padding:5px 4px"></th><th style="padding:5px 4px;text-align:right;color:${L.accent};font-size:${L.fs-1}px;font-weight:600">Antal</th><th style="padding:5px 4px;text-align:right;color:${L.accent};font-size:${L.fs-1}px;font-weight:600">À-pris</th><th style="padding:5px 4px;text-align:right;color:${L.accent};font-size:${L.fs-1}px;font-weight:600">Rab.</th><th style="padding:5px 4px;text-align:right;color:${L.accent};font-size:${L.fs-1}px;font-weight:600">Moms</th><th style="padding:5px 4px;text-align:right;color:${L.accent};font-size:${L.fs-1}px;font-weight:600">Belopp</th></tr></thead><tbody>${rows}</tbody></table>`;
+    const thS=`padding:5px 4px;font-weight:600;font-size:${L.fs-1}px`;
+    return `<table style="width:100%;border-collapse:collapse;font-family:${L.font};font-size:${L.fs}px;color:${L.text}"><thead><tr style="border-bottom:1.5px solid ${L.accent}"><th style="${thS};text-align:left;color:${L.accent}">#</th><th style="${thS};text-align:left;color:${L.accent}">Produkt / tjänst</th>${showNote?`<th style="${thS}"></th>`:''}<th style="${thS};text-align:right;color:${L.accent}">Antal</th><th style="${thS};text-align:right;color:${L.accent}">À-pris</th>${showDisc?`<th style="${thS};text-align:right;color:${L.accent}">Rab.</th>`:''  }${showVat?`<th style="${thS};text-align:right;color:${L.accent}">Moms</th>`:''}<th style="${thS};text-align:right;color:${L.accent}">Belopp</th></tr></thead><tbody>${rows}</tbody></table>`;
   }
 
   if(id==='totals') {
-    const vrows=inv.rc?`<div style="display:flex;justify-content:space-between;padding:2px 0;font-size:${L.fs}px;color:#666"><span>Moms (omvänd skattskyldighet):</span><span>0,00</span></div>`:inv.vatRows.map(r=>`<div style="display:flex;justify-content:space-between;padding:2px 0;font-size:${L.fs}px;color:#666"><span>Moms ${r.rate}% (på ${fmt(r.base)}):</span><span>${fmt(r.v)}</span></div>`).join('');
-    const discRow=inv.totalDisc>0?`<div style="display:flex;justify-content:space-between;padding:2px 0;font-size:${L.fs}px;color:#dc2626"><span>Rabatt:</span><span>-${fmt(inv.totalDisc)}</span></div>`:'';
-    return `<div style="font-family:${L.font};color:${L.text}"><div style="display:flex;justify-content:space-between;padding:2px 0;font-size:${L.fs}px;color:#666"><span>Netto:</span><span>${fmt(inv.sub)}</span></div>${discRow}${vrows}<div style="display:flex;justify-content:space-between;padding:2px 0;font-size:${L.fs}px;color:#ccc"><span>Öresutjämning:</span><span>0,00</span></div><div style="border-top:1.5px solid ${L.accent};margin-top:6px;padding-top:8px;display:flex;justify-content:space-between;align-items:baseline"><span style="font-size:${L.fs+1}px;font-weight:600;color:${L.text}">Summa att betala</span><span style="font-size:${L.ts-4}px;font-weight:700;color:${L.accent}">${fmt(inv.grand)}</span></div>${inv.rc?`<div style="font-size:${L.fs-1}px;color:#aaa;margin-top:6px">Omvänd skattskyldighet enl. 1 kap. 2 § ML.</div>`:''}</div>`;
+    const tot=sv.totals||{};
+    const netRow=tot.net!==false?`<div style="display:flex;justify-content:space-between;padding:2px 0;font-size:${L.fs}px;color:#666"><span>Netto:</span><span>${fmt(inv.sub)}</span></div>`:'';
+    const discRow=(tot.disc!==false&&inv.totalDisc>0)?`<div style="display:flex;justify-content:space-between;padding:2px 0;font-size:${L.fs}px;color:#dc2626"><span>Rabatt:</span><span>-${fmt(inv.totalDisc)}</span></div>`:'';
+    const vatRows=tot.vat!==false?(inv.rc?`<div style="display:flex;justify-content:space-between;padding:2px 0;font-size:${L.fs}px;color:#666"><span>Moms (omvänd skattskyldighet):</span><span>0,00</span></div>`:inv.vatRows.map(r=>`<div style="display:flex;justify-content:space-between;padding:2px 0;font-size:${L.fs}px;color:#666"><span>Moms ${r.rate}% (på ${fmt(r.base)}):</span><span>${fmt(r.v)}</span></div>`).join('')):'';
+    const oresRow=tot.ores!==false?`<div style="display:flex;justify-content:space-between;padding:2px 0;font-size:${L.fs}px;color:#ccc"><span>Öresutjämning:</span><span>0,00</span></div>`:'';
+    const rcNote=(tot.rcnote!==false&&inv.rc)?`<div style="font-size:${L.fs-1}px;color:#aaa;margin-top:6px">Omvänd skattskyldighet enl. 1 kap. 2 § ML.</div>`:'';
+    return `<div style="font-family:${L.font};color:${L.text}">${netRow}${discRow}${vatRows}${oresRow}<div style="border-top:1.5px solid ${L.accent};margin-top:6px;padding-top:8px;display:flex;justify-content:space-between;align-items:baseline"><span style="font-size:${L.fs+1}px;font-weight:600;color:${L.text}">Summa att betala</span><span style="font-size:${L.ts-4}px;font-weight:700;color:${L.accent}">${fmt(inv.grand)}</span></div>${rcNote}</div>`;
   }
 
-  if(id==='footer') return `<div style="font-family:${L.font};font-size:${L.fs-1}px;color:#555;border-top:1px solid #e5e7eb;padding-top:12px;display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px"><div><div style="font-weight:600;color:${L.text};margin-bottom:3px;font-size:${L.fs}px">Adress</div>${inv.company}<br>${addrHtml}</div><div><div style="font-weight:600;color:${L.text};margin-bottom:3px;font-size:${L.fs}px">Kontakt</div>${inv.phone}<br>${inv.email}<br><strong>Bankgiro</strong> ${inv.bgiro}</div><div style="text-align:right"><div style="font-weight:600;color:${L.text};margin-bottom:3px;font-size:${L.fs}px">Betalning</div><strong>OCR:</strong> ${inv.ocr}<br><strong>Bankgiro:</strong> ${inv.bgiro}<br><br>Org.nr: ${inv.orgnr}<br>Momsreg.nr: ${inv.vatnr}<br><span style="color:#bbb;font-size:${L.fs-1}px">Godkänd för F-skatt</span></div></div>`;
+  if(id==='footer') {
+    const fb=sv.footer||{};
+    const cols=[
+      fb.addr!==false?`<div><div style="font-weight:600;color:${L.text};margin-bottom:3px;font-size:${L.fs}px">Adress</div>${inv.company}<br>${addrHtml}</div>`:null,
+      fb.contact!==false?`<div><div style="font-weight:600;color:${L.text};margin-bottom:3px;font-size:${L.fs}px">Kontakt</div>${inv.phone}<br>${inv.email}<br><strong>Bankgiro</strong> ${inv.bgiro}</div>`:null,
+      fb.payment!==false?`<div style="text-align:right"><div style="font-weight:600;color:${L.text};margin-bottom:3px;font-size:${L.fs}px">Betalning</div><strong>OCR:</strong> ${inv.ocr}<br><strong>Bankgiro:</strong> ${inv.bgiro}<br><br>Org.nr: ${inv.orgnr}<br>Momsreg.nr: ${inv.vatnr}<br><span style="color:#bbb;font-size:${L.fs-1}px">Godkänd för F-skatt</span></div>`:null,
+    ].filter(Boolean);
+    const gtc=Array(cols.length).fill('1fr').join(' ');
+    return `<div style="font-family:${L.font};font-size:${L.fs-1}px;color:#555;border-top:1px solid #e5e7eb;padding-top:12px;display:grid;grid-template-columns:${gtc};gap:12px">${cols.join('')}</div>`;
+  }
 
   if(id==='notes')    return `<div style="${bs};color:#aaa;font-size:${L.fs-1}px;font-style:italic">${inv.notes}</div>`;
   if(id==='freetext') return `<div style="${bs};font-size:${L.fs-1}px;color:#666">${inv.freetext}</div>`;
