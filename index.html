@@ -23,7 +23,9 @@ body{font-family:var(--font);color:var(--g900);background:var(--g100);font-size:
 .app{display:flex;height:100vh;min-height:600px;overflow:hidden}
 
 /* ── SIDEBAR ── */
-.sidebar{width:300px;min-width:240px;background:var(--f);border-right:1px solid var(--g200);display:flex;flex-direction:column;overflow:hidden}
+.sidebar{width:300px;min-width:200px;max-width:560px;background:var(--f);border-right:1px solid var(--g200);display:flex;flex-direction:column;overflow:hidden;flex-shrink:0}
+.sidebar-resizer{width:5px;cursor:col-resize;background:transparent;flex-shrink:0;position:relative;z-index:5;transition:background .15s}
+.sidebar-resizer:hover,.sidebar-resizer.dragging{background:var(--b300)}
 
 /* ── TABS ── */
 .tabs{padding:12px 12px 0;background:var(--f)}
@@ -226,8 +228,6 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
     <button class="tab active" onclick="switchTab('data')">Data</button>
     <button class="tab" onclick="switchTab('design')">Design</button>
     <button class="tab" onclick="switchTab('blocks')">Block</button>
-    <button class="tab" onclick="switchTab('saved')">Fakturor</button>
-    <button class="tab" onclick="switchTab('reg')">Register</button>
    </div>
   </div>
   <div class="tab-content">
@@ -250,7 +250,7 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
     </div>
     <div class="slabel">Faktura</div>
     <div class="row2">
-     <div class="sfield"><label>Fakturanr <span id="autosave-dot" class="autosave-dot"></span></label><input id="f-invno" value="1001" oninput="onChange()"></div>
+     <div class="sfield"><label>Fakturanr</label><input id="f-invno" value="1001" oninput="onChange()"></div>
      <div class="sfield"><label>Kundnr</label><input id="f-custno" value="101" oninput="onChange()"></div>
     </div>
     <div class="row2">
@@ -286,12 +286,12 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
     <div class="sfield"><label>Omvänd skattskyldighet</label>
      <select id="f-rc" onchange="onChange()"><option value="0">Nej</option><option value="1">Ja – EU reverse charge</option></select>
     </div>
-    <div class="slabel">Kund <span class="tag" onclick="switchTab('reg')">välj från register</span></div>
+    <div class="slabel">Kund</div>
     <div class="sfield"><label>Namn / Företag</label><input id="c-name" value="Kundföretaget AB" oninput="onChange()"></div>
     <div class="sfield"><label>Adress</label><textarea id="c-addr" rows="2" oninput="onChange()">Kundgatan 5
 111 22 Göteborg</textarea></div>
     <div class="sfield"><label>E-post</label><input id="c-email" value="info@kund.se" oninput="onChange()"></div>
-    <div class="slabel">Rader <span class="tag" onclick="switchTab('reg')">välj artikel</span></div>
+    <div class="slabel">Rader</div>
     <table class="items-tbl">
      <thead><tr><th>Beskr.</th><th>Not</th><th style="width:26px">Ant</th><th style="width:40px">Pris</th><th style="width:28px">Rab</th><th style="width:32px">Moms</th><th style="width:26px"></th></tr></thead>
      <tbody id="items-body"></tbody>
@@ -351,43 +351,22 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
     <div class="slabel" style="margin-top:14px">Tangentbordsgenvägar</div>
     <div style="font-size:11px;color:var(--g500);line-height:2.4">
      <span class="kbd">Ctrl+Z</span> Ångra &nbsp;<span class="kbd">Ctrl+Y</span> Gör om<br>
-     <span class="kbd">Ctrl+S</span> Spara &nbsp;<span class="kbd">Ctrl+P</span> Förhandsgranska<br>
+     <span class="kbd">Ctrl+P</span> Förhandsgranska<br>
      <span class="kbd">Del</span> Ta bort markerat block
     </div>
     <button class="add-btn" style="margin-top:14px" onclick="resetLayout()">Återställ layout</button>
    </div>
 
-   <div class="tab-panel" id="tab-saved">
-    <div class="slabel">Dashboard</div>
-    <div class="dash-grid" id="dashboard"></div>
-    <div class="slabel">Spara faktura</div>
-    <div class="save-row"><input type="text" id="save-name" placeholder="Namn på faktura"><button onclick="saveInvoice()">Spara</button></div>
-    <div class="slabel">Filter</div>
-    <div class="sfield"><select id="filter-status" onchange="renderSavedList()">
-     <option value="">Alla</option><option value="unpaid">Obetald</option><option value="paid">Betald</option><option value="overdue">Förfallen</option>
-    </select></div>
-    <div class="inv-list" id="inv-list"></div>
-   </div>
-
-   <div class="tab-panel" id="tab-reg">
-    <div class="slabel">Kundregister</div>
-    <button class="add-btn" onclick="showModal('customer')">+ Lägg till kund</button>
-    <div id="customer-list"></div>
-    <div class="slabel">Artikelregister</div>
-    <button class="add-btn" onclick="showModal('article')">+ Lägg till artikel</button>
-    <div id="article-list"></div>
-   </div>
   </div>
 
   <div class="btn-row">
    <button class="action-btn a-ghost" onclick="showPreview()" title="Ctrl+P">👁</button>
-   <button class="action-btn a-ghost" onclick="saveInvoiceQuick()" title="Ctrl+S">💾</button>
    <button class="action-btn a-accent" id="pdf-btn" onclick="savePDF()">PDF</button>
-   <button class="action-btn a-ghost" onclick="exportCSV()">CSV</button>
    <button class="action-btn a-ghost" onclick="window.print()">🖨</button>
   </div>
  </div>
 
+ <div class="sidebar-resizer" id="sidebar-resizer"></div>
  <div class="canvas-area" id="canvas-area">
   <div class="canvas-toolbar">
    <button class="snap-toggle" id="snap-btn" onclick="toggleSnap()">Snap: AV</button>
@@ -421,16 +400,6 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
  </div>
 </div>
 
-<div class="modal-overlay" id="modal-overlay" onclick="if(event.target===this)closeModal()">
- <div class="modal">
-  <h3 id="modal-title"></h3>
-  <div id="modal-body"></div>
-  <div class="modal-btn-row">
-   <button class="modal-btn modal-cancel" onclick="closeModal()">Avbryt</button>
-   <button class="modal-btn modal-ok" onclick="modalOk()">Spara</button>
-  </div>
- </div>
-</div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
@@ -489,7 +458,6 @@ document.addEventListener('keydown', e => {
   if(e.ctrlKey||e.metaKey) {
     if(e.key==='z'){e.preventDefault();undo();}
     if(e.key==='y'){e.preventDefault();redo();}
-    if(e.key==='s'){e.preventDefault();saveInvoiceQuick();}
     if(e.key==='p'){e.preventDefault();showPreview();}
   }
   if((e.key==='Delete'||e.key==='Backspace')&&document.activeElement===document.body) {
@@ -498,21 +466,7 @@ document.addEventListener('keydown', e => {
   }
 });
 
-// ── AUTO-SAVE ──
-let autoSaveTimer=null;
-function onChange() { renderAll(); clearTimeout(autoSaveTimer); autoSaveTimer=setTimeout(autosaveDraft,1500); }
-async function autosaveDraft() { try{await window.storage.set('draft',JSON.stringify(getState()));const dot=g('autosave-dot');dot.classList.add('show');setTimeout(()=>dot.classList.remove('show'),1200);}catch{} }
-async function loadDraft() { try{const r=await window.storage.get('draft');if(r)applyState(JSON.parse(r.value));}catch{} }
-
-async function nextInvNo() {
-  try {
-    const r=await window.storage.list('inv:'); const keys=(r&&r.keys)||[];
-    const entries=await Promise.all(keys.map(async k=>{try{const d=await window.storage.get(k);return JSON.parse(d.value);}catch{return null;}}));
-    const nums=entries.filter(Boolean).map(e=>parseInt(e.state?.fields?.invno||0,10)).filter(n=>!isNaN(n));
-    if(nums.length) return String(Math.max(...nums)+1);
-  } catch{}
-  return '1001';
-}
+function onChange() { renderAll(); }
 
 // ── LOGO ──
 let logoDataUrl='';
@@ -549,13 +503,11 @@ let blockState={}, blockVisible={};
 blockDefs.forEach(b=>{blockState[b.id]={x:b.x,y:b.y,w:b.w,h:b.h};blockVisible[b.id]=true;});
 
 // ── TABS ──
-const tabNames=['data','design','blocks','saved','reg'];
+const tabNames=['data','design','blocks'];
 function switchTab(t) {
   document.querySelectorAll('.tab').forEach((el,i)=>el.classList.toggle('active',tabNames[i]===t));
   document.querySelectorAll('.tab-panel').forEach(el=>el.classList.remove('active'));
   g('tab-'+t).classList.add('active');
-  if(t==='saved'){renderDashboard();renderSavedList();}
-  if(t==='reg'){renderCustomerList();renderArticleList();}
   if(t==='design'){renderMallList();buildThemeGrid();}
 }
 
@@ -786,24 +738,23 @@ async function makeReminder(key,e){
   try{const r=await window.storage.get(key);const d=JSON.parse(r.value);applyState(d.state);g('f-type').value='reminder';g('f-reminvno').value=d.state.fields.invno;const t=new Date();g('f-date').value=t.toISOString().split('T')[0];const du=new Date(t);du.setDate(du.getDate()+10);g('f-due').value=du.toISOString().split('T')[0];g('f-status').value='unpaid';renderAll();switchTab('data');}catch{alert('Fel.');}
 }
 
+// ── MALLAR (localStorage) ──
 function getDesignObj(){return{...getDesign(),cbg:g('c-bg').value,strip:g('c-strip').value,fs:g('d-fontsize').value,ts:g('d-titlesize').value,dw:g('d-width').value,dh:g('d-height').value,blockState:JSON.parse(JSON.stringify(blockState)),blockVisible:JSON.parse(JSON.stringify(blockVisible))};}
-async function saveMall(){const name=prompt('Mallnamn:');if(!name)return;try{await window.storage.set('mall:'+Date.now(),JSON.stringify({name,design:getDesignObj()}));renderMallList();}catch(e){alert(e.message);}}
-async function renderMallList(){
+function saveMall(){const name=prompt('Mallnamn:');if(!name)return;try{const m=JSON.parse(localStorage.getItem('mallar')||'[]');m.push({id:Date.now(),name,design:getDesignObj()});localStorage.setItem('mallar',JSON.stringify(m));renderMallList();}catch(e){alert(e.message);}}
+function renderMallList(){
   const c=g('mall-list'); c.innerHTML='';
-  try{
-    const res=await window.storage.list('mall:'); const keys=(res&&res.keys)||[];
-    if(!keys.length){c.innerHTML='<div style="font-size:11px;color:var(--g400);margin-bottom:6px">Inga mallar.</div>';return;}
-    const entries=await Promise.all(keys.map(async k=>{try{const r=await window.storage.get(k);return{k,d:JSON.parse(r.value)};}catch{return null;}}));
-    entries.filter(Boolean).forEach(({k,d})=>{
+  try{const m=JSON.parse(localStorage.getItem('mallar')||'[]');
+    if(!m.length){c.innerHTML='<div style="font-size:11px;color:var(--g400);margin-bottom:6px">Inga mallar.</div>';return;}
+    m.forEach(({id,name,design:des})=>{
       const row=document.createElement('div');
       row.style.cssText='display:flex;gap:6px;margin-bottom:6px;align-items:center;background:var(--g50);border:1px solid var(--g100);border-radius:8px;padding:7px 10px';
-      row.innerHTML=`<div style="font-size:12px;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-weight:500;color:var(--g800)">${d.name}</div><button class="icon-btn" onclick="applyMall('${k}')" title="Använd">✓</button><button class="del-btn" onclick="deleteMall('${k}')">✕</button>`;
+      row.innerHTML=`<div style="font-size:12px;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-weight:500;color:var(--g800)">${name}</div><button class="icon-btn" onclick="applyMall(${id})" title="Använd">✓</button><button class="del-btn" onclick="deleteMall(${id})">✕</button>`;
       c.appendChild(row);
     });
   }catch{}
 }
-async function applyMall(key){
-  try{const r=await window.storage.get(key);const{design:des}=JSON.parse(r.value);
+function applyMall(id){
+  try{const m=JSON.parse(localStorage.getItem('mallar')||'[]');const des=(m.find(x=>x.id===id)||{}).design||{};
     if(des.accent)g('c-accent').value=des.accent; if(des.text)g('c-text').value=des.text;
     g('c-bg').value=des.cbg||'#fff'; if(des.strip)g('c-strip').value=des.strip;
     if(des.sumbox)g('c-sumbox').value=des.sumbox; if(des.roweven)g('c-roweven').value=des.roweven;
@@ -814,63 +765,7 @@ async function applyMall(key){
     resizeCanvas();buildBlockToggles();onChange();
   }catch{alert('Kunde inte ladda.');}
 }
-async function deleteMall(key){try{await window.storage.delete(key);renderMallList();}catch{}}
-
-let modalMode='';
-async function renderCustomerList(){
-  const c=g('customer-list'); c.innerHTML='';
-  try{const res=await window.storage.list('cust:');const keys=(res&&res.keys)||[];
-    if(!keys.length){c.innerHTML='<div class="empty-state">Inga kunder.</div>';return;}
-    const entries=await Promise.all(keys.map(async k=>{try{const r=await window.storage.get(k);return{k,d:JSON.parse(r.value)};}catch{return null;}}));
-    entries.filter(Boolean).forEach(({k,d})=>{
-      const el=document.createElement('div');el.className='reg-item';
-      el.innerHTML=`<div class="reg-item-info"><div class="reg-item-name">${d.name}</div><div class="reg-item-sub">${d.email||''}</div></div><button class="del-btn" onclick="deleteReg('${k}','customer',event)">✕</button>`;
-      el.addEventListener('click',e=>{if(e.target.classList.contains('del-btn'))return;g('c-name').value=d.name;g('c-addr').value=d.addr||'';g('c-email').value=d.email||'';onChange();switchTab('data');});
-      c.appendChild(el);
-    });
-  }catch{}
-}
-async function renderArticleList(){
-  const c=g('article-list'); c.innerHTML='';
-  try{const res=await window.storage.list('art:');const keys=(res&&res.keys)||[];
-    if(!keys.length){c.innerHTML='<div class="empty-state">Inga artiklar.</div>';return;}
-    const entries=await Promise.all(keys.map(async k=>{try{const r=await window.storage.get(k);return{k,d:JSON.parse(r.value)};}catch{return null;}}));
-    entries.filter(Boolean).forEach(({k,d})=>{
-      const el=document.createElement('div');el.className='reg-item';
-      el.innerHTML=`<div class="reg-item-info"><div class="reg-item-name">${d.name}</div><div class="reg-item-sub">${d.price} · Moms ${d.vat}%</div></div><button class="del-btn" onclick="deleteReg('${k}','article',event)">✕</button>`;
-      el.addEventListener('click',e=>{if(e.target.classList.contains('del-btn'))return;addRow(d.name,'',1,+d.price,+d.vat,0);switchTab('data');});
-      c.appendChild(el);
-    });
-  }catch{}
-}
-async function deleteReg(key,type,e){e.stopPropagation();try{await window.storage.delete(key);if(type==='customer')renderCustomerList();else renderArticleList();}catch{}}
-
-function showModal(mode){
-  modalMode=mode; g('modal-title').textContent=mode==='customer'?'Ny kund':'Ny artikel';
-  g('modal-body').innerHTML=mode==='customer'
-    ?`<div class="sfield"><label>Namn</label><input id="m-name"></div><div class="sfield"><label>Adress</label><textarea id="m-addr" rows="2"></textarea></div><div class="sfield"><label>E-post</label><input id="m-email"></div>`
-    :`<div class="sfield"><label>Artikelnamn</label><input id="m-name"></div><div class="row2"><div class="sfield"><label>Pris</label><input type="number" id="m-price" value="0"></div><div class="sfield"><label>Moms %</label><select id="m-vat">${vatOpts(25)}</select></div></div>`;
-  g('modal-overlay').classList.add('show'); setTimeout(()=>g('m-name').focus(),50);
-}
-function closeModal(){g('modal-overlay').classList.remove('show');}
-async function modalOk(){
-  const name=g('m-name').value.trim(); if(!name)return;
-  let data,prefix;
-  if(modalMode==='customer'){data={name,addr:g('m-addr').value,email:g('m-email').value};prefix='cust:';}
-  else{data={name,price:g('m-price').value,vat:g('m-vat').value};prefix='art:';}
-  try{await window.storage.set(prefix+Date.now(),JSON.stringify(data));closeModal();if(modalMode==='customer')renderCustomerList();else renderArticleList();}catch{}
-}
-g('modal-overlay').addEventListener('keydown',e=>{if(e.key==='Enter')modalOk();if(e.key==='Escape')closeModal();});
-
-async function exportCSV(){
-  try{const res=await window.storage.list('inv:');const keys=(res&&res.keys)||[];
-    const entries=await Promise.all(keys.map(async k=>{try{const r=await window.storage.get(k);return JSON.parse(r.value);}catch{return null;}}));
-    const valid=entries.filter(Boolean).sort((a,b)=>new Date(a.date)-new Date(b.date));
-    const rows=[['Namn','Datum','Status','Belopp','Valuta'],...valid.map(e=>[e.name,new Date(e.date).toLocaleDateString('sv-SE'),statusLabels[e.status]||e.status,(e.grand||0).toFixed(2),e.currency||'SEK'])];
-    const csv=rows.map(r=>r.map(v=>`"${String(v).replace(/"/g,'""')}"`).join(',')).join('\n');
-    const a=document.createElement('a');a.href=URL.createObjectURL(new Blob(['﻿'+csv],{type:'text/csv;charset=utf-8'}));a.download='fakturor.csv';a.click();
-  }catch(e){alert('CSV-fel: '+e.message);}
-}
+function deleteMall(id){try{const m=JSON.parse(localStorage.getItem('mallar')||'[]');localStorage.setItem('mallar',JSON.stringify(m.filter(x=>x.id!==id)));renderMallList();}catch{}}
 
 async function savePDF(){
   const el=g('invoice-wrap'), btn=g('pdf-btn');
@@ -887,8 +782,33 @@ async function savePDF(){
   g('snap-canvas').style.display=''; btn.innerHTML='PDF'; btn.disabled=false;
 }
 
-async function closeOnboard(){g('onboard-overlay').style.display='none';try{await window.storage.set('onboarded','1');}catch{}}
-async function checkOnboard(){try{await window.storage.get('onboarded');g('onboard-overlay').style.display='none';}catch{}}
+function closeOnboard(){g('onboard-overlay').style.display='none';try{localStorage.setItem('onboarded','1');}catch{}}
+function checkOnboard(){if(localStorage.getItem('onboarded'))g('onboard-overlay').style.display='none';}
+
+// ── SIDEBAR RESIZE ──
+(function(){
+  const resizer=g('sidebar-resizer'), sidebar=document.querySelector('.sidebar');
+  resizer.addEventListener('mousedown', e=>{
+    e.preventDefault();
+    const startX=e.clientX, startW=sidebar.offsetWidth;
+    resizer.classList.add('dragging');
+    document.body.style.cursor='col-resize';
+    document.body.style.userSelect='none';
+    const mv=e=>{
+      const w=Math.min(Math.max(200, startW+(e.clientX-startX)), 560);
+      sidebar.style.width=w+'px';
+    };
+    const up=()=>{
+      resizer.classList.remove('dragging');
+      document.body.style.cursor='';
+      document.body.style.userSelect='';
+      document.removeEventListener('mousemove',mv);
+      document.removeEventListener('mouseup',up);
+    };
+    document.addEventListener('mousemove',mv);
+    document.addEventListener('mouseup',up);
+  });
+})();
 
 // ── INIT ──
 const today=new Date();
@@ -900,6 +820,7 @@ rebuildSidebarItems();
 buildBlockToggles();
 buildThemeGrid();
 pushHistory();
-loadDraft().then(()=>renderAll());
+renderAll();
 checkOnboard();
 </script>
+
